@@ -34,8 +34,11 @@ def parse_args():
     parser.add_argument('--log_dir', type=str, default=None, help='experiment root')
     parser.add_argument('--decay_rate', type=float, default=1e-4, help='decay rate [default: 1e-4]')
     parser.add_argument('--normal', action='store_true', default=False, help='Whether to use normal information [default: False]')
-    parser.add_argument('--num_worker', default=4, help='Number of Dataloader workers [default: 4]')
+    parser.add_argument('--num_worker', default=4, type=int, help='Number of Dataloader workers [default: 4]')
+    parser.add_argument('--num_class', default=40, type=int, help='Number of classes [default: 40]')
+    parser.add_argument('--data_dir', type=str, default='data/mnist_point_cloud/', help='Data dir')
     return parser.parse_args()
+
 
 def test(model, loader, num_class=40):
     mean_correct = []
@@ -98,7 +101,8 @@ def main(args):
 
     '''DATA LOADING'''
     log_string('Load dataset ...')
-    DATA_PATH = 'data/modelnet40_normal_resampled/'
+    # DATA_PATH = 'data/modelnet40_normal_resampled/'
+    DATA_PATH = args.data_dir
 
     TRAIN_DATASET = ModelNetDataLoader(root=DATA_PATH, npoint=args.num_point, split='train',
                                                      normal_channel=args.normal)
@@ -108,7 +112,7 @@ def main(args):
     testDataLoader = torch.utils.data.DataLoader(TEST_DATASET, batch_size=args.batch_size, shuffle=False, num_workers=args.num_worker)
 
     '''MODEL LOADING'''
-    num_class = 40
+    num_class = args.num_class
     MODEL = importlib.import_module(args.model)
     shutil.copy('./models/%s.py' % args.model, str(experiment_dir))
     shutil.copy('./models/pointnet_util.py', str(experiment_dir))
@@ -178,7 +182,7 @@ def main(args):
 
 
         with torch.no_grad():
-            instance_acc, class_acc = test(classifier.eval(), testDataLoader)
+            instance_acc, class_acc = test(classifier.eval(), testDataLoader, num_class)
 
             if (instance_acc >= best_instance_acc):
                 best_instance_acc = instance_acc
