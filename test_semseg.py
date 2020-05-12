@@ -19,7 +19,10 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = BASE_DIR
 sys.path.append(os.path.join(ROOT_DIR, 'models'))
 
-classes = ['ceiling','floor','wall','beam','column','window','door','table','chair','sofa','bookcase','board','clutter']
+# classes = ['ceiling','floor','wall','beam','column','window','door','table','chair','sofa','bookcase','board','clutter']
+classes = ['background', 'aeroplane', 'bicycle', 'bird', 'boat', 'bottle', 'bus', 'car', 'cat', 'chair', 'cow',
+           'diningtable', 'dog', 'horse', 'motorbike', 'person', 'pottedplant', 'sheep', 'sofa', 'train', 'tvmonitor']
+
 class2label = {cls: i for i,cls in enumerate(classes)}
 seg_classes = class2label
 seg_label_to_cat = {}
@@ -29,13 +32,15 @@ for i,cat in enumerate(seg_classes.keys()):
 def parse_args():
     '''PARAMETERS'''
     parser = argparse.ArgumentParser('Model')
-    parser.add_argument('--batch_size', type=int, default=32, help='batch size in testing [default: 32]')
+    parser.add_argument('--batch_size', type=int, default=16, help='batch size in testing [default: 32]')
     parser.add_argument('--gpu', type=str, default='0', help='specify gpu device')
     parser.add_argument('--num_point', type=int, default=4096, help='Point Number [default: 4096]')
-    parser.add_argument('--log_dir', type=str, default='pointnet2_sem_seg', help='Experiment root')
-    parser.add_argument('--visual', action='store_true', default=False, help='Whether visualize result [default: False]')
-    parser.add_argument('--test_area', type=int, default=5, help='Which area to use for test, option: 1-6 [default: 5]')
+    parser.add_argument('--log_dir', type=str, default='pointnet2_sem_seg_pascal', help='Experiment root')
+    parser.add_argument('--visual', action='store_true', default=True, help='Whether visualize result [default: False]')
+    parser.add_argument('--test_area', type=int, default=2, help='Which area to use for test, option: 1-6 [default: 5]')
     parser.add_argument('--num_votes', type=int, default=5, help='Aggregate segmentation scores with voting [default: 5]')
+    parser.add_argument('--num_class', default=21, type=int, help='Number of classes [default: 21]')
+    parser.add_argument('--data_dir', type=str, default='data/pascal_point_cloud/', help='Data dir')
     return parser.parse_args()
 
 def add_vote(vote_label_pool, point_idx, pred_label, weight):
@@ -71,13 +76,13 @@ def main(args):
     log_string('PARAMETER ...')
     log_string(args)
 
-    NUM_CLASSES = 13
+    NUM_CLASSES = args.num_class
     BATCH_SIZE = args.batch_size
     NUM_POINT = args.num_point
 
-    root = 'data/stanford_indoor3d/'
+    root = args.data_dir
 
-    TEST_DATASET_WHOLE_SCENE = ScannetDatasetWholeScene(root, split='test', test_area=args.test_area, block_points=NUM_POINT)
+    TEST_DATASET_WHOLE_SCENE = ScannetDatasetWholeScene(root, split='test', test_area=args.test_area, block_points=NUM_POINT, num_class=NUM_CLASSES)
     log_string("The number of test data is: %d" %  len(TEST_DATASET_WHOLE_SCENE))
 
     '''MODEL LOADING'''
@@ -180,7 +185,7 @@ def main(args):
         iou_per_class_str = '------- IoU --------\n'
         for l in range(NUM_CLASSES):
             iou_per_class_str += 'class %s, IoU: %.3f \n' % (
-                seg_label_to_cat[l] + ' ' * (14 - len(seg_label_to_cat[l])),
+                seg_label_to_cat[l] + ' ' * (NUM_CLASSES + 1 - len(seg_label_to_cat[l])),
                 total_correct_class[l] / float(total_iou_deno_class[l]))
         log_string(iou_per_class_str)
         log_string('eval point avg class IoU: %f' % np.mean(IoU))
